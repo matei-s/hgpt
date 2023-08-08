@@ -16,6 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const cachedWebpage = await kv.get<string>(userPrompt)
 
+  res.setHeader('Cache-Control', 's-maxage=86400')
+
   if (cachedWebpage) {
     console.log('cache hit:', userPrompt)
     return res.send(cachedWebpage)
