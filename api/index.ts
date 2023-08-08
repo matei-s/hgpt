@@ -1,3 +1,4 @@
+import { kv } from '@vercel/kv'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import fs from 'fs'
 import { Configuration, OpenAIApi } from 'openai'
@@ -8,20 +9,29 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration)
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('user prompt:', req.url)
+  const systemPrompt =
+    (await kv.get<string>('__prompt')) ||
+    'Generate a webpage. Output only the webpage html content.'
+  const userPrompt = req.url || '/'
 
-  const prompt = fs.readFileSync('prompt.txt', 'utf-8')
+  const cachedWebpage = await kv.get<string>(userPrompt)
 
+  if (cachedWebpage) {
+    console.log('cache hit:', userPrompt)
+    return res.send(cachedWebpage)
+  }
+
+  console.log('cache miss:', userPrompt)
   const gptResponse = await openai.createChatCompletion({
     model: 'gpt-3.5-turbo-16k',
     messages: [
       {
         role: 'system',
-        content: prompt,
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: req.url || '/',
+        content: userPrompt,
       },
     ],
     temperature: 1,
@@ -31,5 +41,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     presence_penalty: 0,
   })
 
-  res.send(gptResponse.data.choices[0].message?.content || '')
+  const webpage = gptResponse.data.choices[0].message?.content || ''
+  await kv.set(userPrompt, webpage)
+
+  res.send(webpage)
 }
