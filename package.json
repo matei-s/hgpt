@@ -1,0 +1,9 @@
+{
+  "name": "hgpt",
+  "scripts": {},
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@vercel/node": "^2.15.8"
+  }
+}
